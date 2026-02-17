@@ -138,7 +138,7 @@ int main(void)
 
         if (!vecAleatorio || !vecAleatorioCopia || !vecOrdenado || !vecOrdenadoInv)
         {
-            cerr << "Error, not enough memory!" << endl;
+            cerr << "Error, not enough memory! " << endl;
             exit(EXIT_FAILURE);
         }
 
