@@ -1,7 +1,6 @@
 /*
 ADA. 2025-26
 Practice 2: "Empirical analysis by means of program-steps account of two sorting algorithms: Middle-Quicksort and Heapsort."
-OSCAR CASADO LORENZO 77580351V
 */
 
 #include <unistd.h>
@@ -119,13 +118,13 @@ int main(void)
     cout << "# Average processing Msteps (millions of program steps)" << endl;
     cout << "# Number of samples (arrays of integer): 30" << endl;
 
-    cout << "#\t\t   RANDOM ARRAYS\t\t   SORTED ARRAYS\t\t   REVERSE SORTED" << endl;
+    cout << "#\t\t\t    RANDOM ARRAYS\t\t   SORTED ARRAYS\t\tREVERSE SORTED ARRAYS" << endl;
 
-    cout << "#\t\t -----------------\t\t -----------------\t\t -----------------" << endl;
+    cout << "#\t\t\t-------------------\t\t-------------------\t\t---------------------" << endl;
 
-    cout << "# Size\t\tQuickSort\tHeapSort\tQuickSort\tHeapSort\tQuickSort\tHeapSort" << endl;
+    cout << "#Size\t\tQuickSort\tHeapSort\tQuickSort\tHeapSort\tQuickSort\tHeapSort" << endl;
 
-    cout << "#==================================================================================================" << endl;
+    cout << "#====================================================================================" << endl;
 
     for (int exp = 15; exp <= 20; exp++)
     {
@@ -143,7 +142,7 @@ int main(void)
         }
 
         // Imprimir Tamaño con doble tabulador
-        cout << size << "\t" << flush;
+        cout << "" << size << "\t" << flush;
 
         // --- 1. RANDOM ---
         double totalStepsQS = 0;
@@ -167,38 +166,42 @@ int main(void)
             totalStepsHS += STEPS;
         }
 
-        // AQUI ESTA EL CAMBIO CLAVE: Usamos "\t\t" (doble) después de cada número
-        // para compensar que "QuickSort" es una palabra larga.
-        cout << (totalStepsQS / 30.0) / 1000000.0 << "\t";
-        cout << (totalStepsHS / 30.0) / 1000000.0 << "\t"; // Doble tab para saltar al siguiente bloque
+        
+        cout << "\t" << (totalStepsQS / 30.0) / 1000000.0 << "\t";
+        cout << "\t" << (totalStepsHS / 30.0) / 1000000.0 << "\t"; // Doble tab para saltar al siguiente bloque
 
         // --- 2. SORTED ---
-        for (size_t j = 0; j < size; j++)
+        for (size_t j = 0; j < size; j++){
             vecOrdenado[j] = j;
+        }
 
         STEPS = 0;
         middle_QuickSort(vecOrdenado, 0, size - 1);
-        cout << STEPS / 1000000.0 << "\t"; // Doble tab
+        cout << "\t" << STEPS / 1000000.0 << "\t\t"; // Doble tab
 
-        for (size_t j = 0; j < size; j++)
+        for (size_t j = 0; j < size; j++){
             vecOrdenado[j] = j;
+        }
         STEPS = 0;
         heapSort(vecOrdenado, size);
-        cout << STEPS / 1000000.0 << "\t"; // Doble tab para saltar al siguiente bloque
+        cout << STEPS / 1000000.0 << "\t\t"; // Doble tab para saltar al siguiente bloque
 
         // --- 3. REVERSE ---
-        for (size_t j = 0; j < size; j++)
+        for (size_t j = 0; j < size; j++){
             vecOrdenadoInv[j] = (size - 1) - j;
+        }
 
         STEPS = 0;
         middle_QuickSort(vecOrdenadoInv, 0, size - 1);
-        cout << STEPS / 1000000.0 << "\t"; // Doble tab
+        cout << STEPS / 1000000.0 << "\t\t"; 
 
-        for (size_t j = 0; j < size; j++)
+        for (size_t j = 0; j < size; j++){
             vecOrdenadoInv[j] = (size - 1) - j;
+        }
+
         STEPS = 0;
         heapSort(vecOrdenadoInv, size);
-        cout << STEPS / 1000000.0 << endl; // Aquí solo endl
+        cout << STEPS / 1000000.0 << endl; 
 
         delete[] vecAleatorio;
         delete[] vecAleatorioCopia;
