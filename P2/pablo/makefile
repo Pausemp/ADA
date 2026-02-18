@@ -12,7 +12,7 @@ qs-vs-hs.Msteps: qs-vs-hs
 graphs: qs-vs-hs.Msteps qs-vs-hs.gpi
 	gnuplot qs-vs-hs.gpi
 
-all: qs-vs-hs qs-vs-hs.Msteps graphs
+all: qs-vs-hs qs-vs-hs.Msteps
 
 tar: qs-vs-hs.cc qs-vs-hs.gpi makefile
 	tar cvfz 20520990E.tar.gz qs-vs-hs.cc qs-vs-hs.gpi makefile
