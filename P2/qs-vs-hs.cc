@@ -58,7 +58,7 @@ void middle_QuickSort(int *v, long left, long right)
 }
 
 //--------------------------------------------------------------
-// HEAPSORT - Sink Procedure
+
 void sink(int *v, size_t n, size_t i)
 {
     STEPS++;
@@ -87,7 +87,7 @@ void sink(int *v, size_t n, size_t i)
 }
 
 //--------------------------------------------------------------
-// Heapsort algorithm
+
 void heapSort(int *v, size_t n)
 {
     STEPS++;
@@ -184,9 +184,8 @@ int main(void)
         }
         STEPS = 0;
         heapSort(vecOrdenado, size);
-        cout << STEPS / 1000000.0 << "\t\t"; // Doble tab para saltar al siguiente bloque
+        cout << STEPS / 1000000.0 << "\t\t"; 
 
-        // --- 3. REVERSE ---
         for (size_t j = 0; j < size; j++){
             vecOrdenadoInv[j] = (size - 1) - j;
         }
