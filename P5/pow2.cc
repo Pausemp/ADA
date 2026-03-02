@@ -1,9 +1,13 @@
 // PAU SEMPERE MARTÍNEZ 20520990E
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
 #include <iomanip>
 #include <cstdlib>
+#include <string>
+
+using namespace std;
 
 // Variable global para la cuenta de pasos de programa
 unsigned long pasos = 0;
@@ -40,32 +44,32 @@ unsigned long pow2_3(unsigned n) {
 
 int main() {
     // Archivo de salida para Gnuplot
-    std::ofstream archivo_datos("pow2.dat");
+    ofstream archivo_datos("pow2.dat");
     if (!archivo_datos) {
-        std::cerr << "Error al crear el archivo de datos." << std::endl;
+        cerr << "Error al crear el archivo de datos." << endl;
         return 1;
     }
 
     // Imprimir cabecera de la tabla por pantalla
-    std::cout << std::setw(5)  << "n" 
-              << std::setw(20) << "Pasos Theta(n)" 
-              << std::setw(20) << "Pasos Theta(log n)" 
-              << std::setw(20) << "Pasos Theta(2^n)" << std::endl;
-    std::cout << std::string(65, '-') << std::endl;
+    cout << setw(5)  << "n" 
+         << setw(20) << "Pasos Theta(n)" 
+         << setw(20) << "Pasos Theta(log n)" 
+         << setw(20) << "Pasos Theta(2^n)" << endl;
+    cout << string(65, '-') << endl;
 
     // Ejecutamos hasta n=25. Si pones un valor mucho más alto, Theta(2^n)
     // superará los 5 segundos límite establecidos por la práctica.
     for (unsigned n = 0; n <= 25; ++n) {
         unsigned long pasos1, pasos2, pasos3;
         unsigned long res1, res2, res3;
-        unsigned long esperado = (unsigned long)(std::pow(2, n));
+        unsigned long esperado = (unsigned long)(pow(2, n));
 
         // Analizar pow2_1
         pasos = 0;
         res1 = pow2_1(n);
         pasos1 = pasos;
         if (res1 != esperado) {
-            std::cerr << "Error: pow2_1(" << n << ") incorrecto." << std::endl;
+            cerr << "Error: pow2_1(" << n << ") incorrecto." << endl;
             return 1;
         }
 
@@ -74,7 +78,7 @@ int main() {
         res2 = pow2_2(n);
         pasos2 = pasos;
         if (res2 != esperado) {
-            std::cerr << "Error: pow2_2(" << n << ") incorrecto." << std::endl;
+            cerr << "Error: pow2_2(" << n << ") incorrecto." << endl;
             return 1;
         }
 
@@ -83,15 +87,15 @@ int main() {
         res3 = pow2_3(n);
         pasos3 = pasos;
         if (res3 != esperado) {
-            std::cerr << "Error: pow2_3(" << n << ") incorrecto." << std::endl;
+            cerr << "Error: pow2_3(" << n << ") incorrecto." << endl;
             return 1;
         }
 
         // Mostrar fila por pantalla
-        std::cout << std::setw(5)  << n 
-                  << std::setw(20) << pasos1 
-                  << std::setw(20) << pasos2 
-                  << std::setw(20) << pasos3 << std::endl;
+        cout << setw(5)  << n 
+             << setw(20) << pasos1 
+             << setw(20) << pasos2 
+             << setw(20) << pasos3 << endl;
 
         // Escribir fila en el archivo de datos
         archivo_datos << n << " " << pasos1 << " " << pasos2 << " " << pasos3 << "\n";
