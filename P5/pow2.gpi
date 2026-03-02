@@ -1,0 +1,16 @@
+# PAU SEMPERE MARTÍNEZ 20520990E
+
+set terminal pngcairo size 800,600 enhanced font 'Arial,11'
+set output 'pow2.png'
+
+set title "Análisis Empírico de Complejidad Temporal - Potencias de 2"
+set xlabel "n (exponente)"
+set ylabel "Número de pasos de programa"
+
+set grid
+set key left top
+
+# Ploteamos usando los datos generados por el ejecutable en pow2.dat
+plot "pow2.dat" using 1:2 with linespoints lw 2 title "pow2\\_1 (Theta(n))", \
+     "pow2.dat" using 1:3 with linespoints lw 2 title "pow2\\_2 (Theta(log n))", \
+     "pow2.dat" using 1:4 with linespoints lw 2 title "pow2\\_3 (Theta(2^n))"

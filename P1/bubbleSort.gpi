@@ -42,6 +42,6 @@ fit y(x) "bubbleSort.CPUtimes" using 1:2 via a,b,c
 
 
 #Finally draw both functions (CPU times of sample and the one that best fits) on one graph
-plot "bubbleSort.CPUtimes" using 1:2 with points title "CPU times of sample", y(x) title fitFunction  
+plot "bubbleSort.CPUtimes" using 1:2 with points title "CPU times of sample", y(x) title fitFunction 
 
 
