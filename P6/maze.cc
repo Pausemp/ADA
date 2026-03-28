@@ -7,19 +7,17 @@
 
 using namespace std;
 
-
 const int INF = 1e9; 
 
+int maze_naive(const vector<vector<int>>& maze, int i, int j) {
+    if (i < 0 || j < 0 || maze[i][j] == 0) return INF;
+    if (i == 0 && j == 0) return 1;
 
-int maze_naive(const vector<vector<int>>& maze, int i, int j, int n, int m) {
-    if (i >= n || j >= m || maze[i][j] == 0) return INF;
-    if (i == n - 1 && j == m - 1) return 1;
+    int izquierda = maze_naive(maze, i, j - 1);
+    int arriba = maze_naive(maze, i - 1, j);
+    int diagonal = maze_naive(maze, i - 1, j - 1);
 
-    int derecha = maze_naive(maze, i, j + 1, n, m);
-    int abajo = maze_naive(maze, i + 1, j, n, m);
-    int diagonal = maze_naive(maze, i + 1, j + 1, n, m);
-
-    int camino = min({derecha, abajo, diagonal});
+    int camino = min({izquierda, arriba, diagonal});
     if (camino == INF) {
         return INF; 
     } else {
@@ -27,31 +25,26 @@ int maze_naive(const vector<vector<int>>& maze, int i, int j, int n, int m) {
     }
 }
 
-
-int maze_memo(const vector<vector<int>>& maze, vector<vector<int>>& memo, int i, int j, int n, int m) {
-    // Si nos salimos de los límites, simplemente devolvemos INF (no existe en la matriz)
-    if (i >= n || j >= m) return INF;
-
-    // Si es un obstáculo, el enunciado exige que quede marcado como 'X' en la tabla si se intenta visitar 
+int maze_memo(const vector<vector<int>>& maze, vector<vector<int>>& memo, int i, int j) {
+    if (i < 0 || j < 0) return INF;
+    
     if (maze[i][j] == 0) {
         memo[i][j] = INF;
         return INF;
     }
 
-    // Si hemos llegado al destino, guardamos el 1 antes de retornar
-    if (i == n - 1 && j == m - 1) {
+    if (i == 0 && j == 0) {
         memo[i][j] = 1;
         return 1;
     }
 
-    // Si ya lo hemos calculado previamente, lo devolvemos
     if (memo[i][j] != -1) return memo[i][j];
 
-    int derecha = maze_memo(maze, memo, i, j + 1, n, m);
-    int abajo = maze_memo(maze, memo, i + 1, j, n, m);
-    int diagonal = maze_memo(maze, memo, i + 1, j + 1, n, m);
+    int izquierda = maze_memo(maze, memo, i, j - 1);
+    int arriba = maze_memo(maze, memo, i - 1, j);
+    int diagonal = maze_memo(maze, memo, i - 1, j - 1);
 
-    int camino = min({derecha, abajo, diagonal});
+    int camino = min({izquierda, arriba, diagonal});
     
     if (camino == INF) {
         memo[i][j] = INF; 
@@ -63,73 +56,66 @@ int maze_memo(const vector<vector<int>>& maze, vector<vector<int>>& memo, int i,
 }
 
 int maze_it_matrix(const vector<vector<int>>& maze, int n, int m, vector<vector<int>>& memo) {
-    // Inicializamos con INF
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < m; ++j) {
-            memo[i][j] = INF;
-        }
-    }
-
-    // Recorremos de abajo hacia arriba, de derecha a izquierda
-    for (int i = n - 1; i >= 0; --i) {
-        for (int j = m - 1; j >= 0; --j) {
             if (maze[i][j] == 0) {
                 memo[i][j] = INF;
-            } else if (i == n - 1 && j == m - 1) {
+            } else if (i == 0 && j == 0) {
                 memo[i][j] = 1;
             } else {
-                int derecha = INF;
-                if (j + 1 < m) {
-                    derecha = memo[i][j + 1];
+                int izquierda = INF;
+                if (j > 0) {
+                    izquierda = memo[i][j - 1];
                 }
 
-                int abajo = INF;
-                if (i + 1 < n) {
-                    abajo = memo[i + 1][j];
+                int arriba = INF;
+                if (i > 0) {
+                    arriba = memo[i - 1][j];
                 }
 
-                int diag = INF;
-                if (i + 1 < n && j + 1 < m) {
-                    diag = memo[i + 1][j + 1];
+                int diagonal = INF;
+                if (i > 0 && j > 0) {
+                    diagonal = memo[i - 1][j - 1];
                 }
                 
-                int minimo = min({derecha, abajo, diag});
+                int minimo = min({izquierda, arriba, diagonal});
                 if (minimo != INF) {
                     memo[i][j] = minimo + 1;
+                } else {
+                    memo[i][j] = INF;
                 }
             }
         }
     }
-    return memo[0][0];
+    return memo[n - 1][m - 1];
 }
 
-// 4. Iterativo con complejidad espacial mejorada
 int maze_it_vector(const vector<vector<int>>& maze, int n, int m) {
-    vector<int> fila_abajo(m, INF);
+    vector<int> fila_arriba(m, INF);
     vector<int> fila_actual(m, INF);
     
-    for (int i = n - 1; i >= 0; --i) {
-        for (int j = m - 1; j >= 0; --j) {
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < m; ++j) {
             if (maze[i][j] == 0) {
                 fila_actual[j] = INF;
             } 
-            else if (i == n - 1 && j == m - 1) {
+            else if (i == 0 && j == 0) {
                 fila_actual[j] = 1;
             } 
             else {
-                int derecha = INF;
-                if (j + 1 < m) {
-                    derecha = fila_actual[j + 1];
+                int izquierda = INF;
+                if (j > 0) {
+                    izquierda = fila_actual[j - 1];
                 }
 
-                int abajo = fila_abajo[j]; 
+                int arriba = fila_arriba[j]; 
                 
-                int diag = INF;
-                if (j + 1 < m) {
-                    diag = fila_abajo[j + 1];
+                int diagonal = INF;
+                if (j > 0) {
+                    diagonal = fila_arriba[j - 1];
                 }
 
-                int minimo = min({derecha, abajo, diag});
+                int minimo = min({izquierda, arriba, diagonal});
                 if (minimo == INF) {
                     fila_actual[j] = INF;
                 } else {
@@ -137,10 +123,10 @@ int maze_it_vector(const vector<vector<int>>& maze, int n, int m) {
                 }
             }
         }
-        swap(fila_abajo, fila_actual); 
+        fila_arriba = fila_actual; 
     }
     
-    return fila_abajo[0];
+    return fila_arriba[m - 1];
 }
 
 // 5. Extracción de la selección (Parsing)
@@ -157,22 +143,23 @@ vector<string> maze_parser(const vector<vector<int>>& maze, const vector<vector<
         }
     }
 
-    if (memo[0][0] == INF) return mapa_salida;
+    if (memo[n - 1][m - 1] == INF) return mapa_salida;
 
-    int i = 0;
-    int j = 0;
+    int i = n - 1;
+    int j = m - 1;
     mapa_salida[i][j] = '*';
 
-    while (i != n - 1 || j != m - 1) {
+    while (i != 0 || j != 0) {
         int coste_actual = memo[i][j];
         
-        if (j + 1 < m && memo[i][j + 1] == coste_actual - 1) {
-            j = j + 1;
-        } else if (i + 1 < n && memo[i + 1][j] == coste_actual - 1) {
-            i = i + 1;
-        } else if (i + 1 < n && j + 1 < m && memo[i + 1][j + 1] == coste_actual - 1) {
-            i = i + 1;
-            j = j + 1;
+        // El orden de los if gestiona en caso de empate qué ruta se prioriza
+        if (i > 0 && j > 0 && memo[i - 1][j - 1] == coste_actual - 1) {
+            i = i - 1;
+            j = j - 1;
+        } else if (i > 0 && memo[i - 1][j] == coste_actual - 1) {
+            i = i - 1;
+        } else if (j > 0 && memo[i][j - 1] == coste_actual - 1) {
+            j = j - 1;
         } else {
             break;
         }
@@ -242,11 +229,11 @@ int main(int argc, char* argv[]) {
     // Ejecución de algoritmos
     int ans_naive = INF;
     if (!ignore_naive) {
-        ans_naive = maze_naive(maze, 0, 0, n, m);
+        ans_naive = maze_naive(maze, n - 1, m - 1); 
     }
 
     vector<vector<int>> memo(n, vector<int>(m, -1));
-    int ans_memo = maze_memo(maze, memo, 0, 0, n, m);
+    int ans_memo = maze_memo(maze, memo, n - 1, m - 1);
 
     vector<vector<int>> M(n, vector<int>(m));
     int ans_it_matrix = maze_it_matrix(maze, n, m, M);
