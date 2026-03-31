@@ -1,4 +1,4 @@
-// Nombre Apellidos, DNI: XXXXXXXXA
+// PAU SEMPERE MARTINEZ 20520990E
 #include <iostream>
 #include <vector>
 #include <string>
@@ -129,7 +129,6 @@ int maze_it_vector(const vector<vector<int>>& maze, int n, int m) {
     return fila_arriba[m - 1];
 }
 
-// 5. Extracción de la selección (Parsing)
 vector<string> maze_parser(const vector<vector<int>>& maze, const vector<vector<int>>& memo, int n, int m) {
     vector<string> mapa_salida(n, string(m, '0'));
     
@@ -152,7 +151,6 @@ vector<string> maze_parser(const vector<vector<int>>& maze, const vector<vector<
     while (i != 0 || j != 0) {
         int coste_actual = memo[i][j];
         
-        // El orden de los if gestiona en caso de empate qué ruta se prioriza
         if (i > 0 && j > 0 && memo[i - 1][j - 1] == coste_actual - 1) {
             i = i - 1;
             j = j - 1;
@@ -170,7 +168,6 @@ vector<string> maze_parser(const vector<vector<int>>& maze, const vector<vector<
     return mapa_salida;
 }
 
-// Función auxiliar para imprimir el uso correcto del programa
 void print_usage() {
     cerr << "Usage:" << endl;
     cerr << "maze [-t] [--p2D] [--ignore-naive] -f file" << endl;
@@ -182,7 +179,6 @@ int main(int argc, char* argv[]) {
     bool ignore_naive = false;
     string filename = "";
 
-    // Parseo de argumentos
     for (int i = 1; i < argc; ++i) {
         string arg = argv[i];
         if (arg == "--p2D") {
@@ -215,7 +211,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Lectura del laberinto
     int n, m;
     file >> n >> m;
     vector<vector<int>> maze(n, vector<int>(m));
@@ -226,7 +221,6 @@ int main(int argc, char* argv[]) {
     }
     file.close();
 
-    // Ejecución de algoritmos
     int ans_naive = INF;
     if (!ignore_naive) {
         ans_naive = maze_naive(maze, n - 1, m - 1); 
@@ -240,7 +234,6 @@ int main(int argc, char* argv[]) {
 
     int ans_it_vector = maze_it_vector(maze, n, m);
 
-    // Salida 1: Resultados de los algoritmos
     auto format_ans = [](int val) {
         return (val == INF) ? "0" : to_string(val);
     };
@@ -254,7 +247,6 @@ int main(int argc, char* argv[]) {
          << format_ans(ans_it_matrix) << " " 
          << format_ans(ans_it_vector) << "\n";
 
-    // Salida 2: Opción --p2D
     if (p2D) {
         if (ans_it_matrix == INF) {
             cout << "0\n";
@@ -266,7 +258,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Salida 3: Opción -t
     if (t) {
         cout << "Memoization table:\n";
         for (int i = 0; i < n; ++i) {
