@@ -1,4 +1,4 @@
-// Nombre: [TU_NOMBRE] | DNI: [TU_DNI]
+// PAU SEMPERE MARTINEZ 20520990E
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -41,7 +41,7 @@ void maze_bt(int r, int c, int cur_len, vector<int> &cur_path, int &best_len, ve
     {
         int nr = r + dr[i], nc = c + dc[i];
 
-                if (nr < 0 || nr >= n || nc < 0 || nc >= m || grid[nr][nc] == 0 || in_path[nr][nc])
+        if (nr < 0 || nr >= n || nc < 0 || nc >= m || grid[nr][nc] == 0 || in_path[nr][nc])
         {
             s.infeasible++;
             continue;
