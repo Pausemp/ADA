@@ -1,6 +1,6 @@
 # PAU SEMPERE MARTINEZ 20520990E
 
-CXX = g++
+CXX = g++-13
 CXXFLAGS = -Wall -Wextra -O3 -std=c++11
 DNI = 20520990E
 

@@ -1,396 +1,302 @@
 // PAU SEMPERE MARTINEZ 20520990E
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
 #include <queue>
+#include <chrono>
 #include <cmath>
-#include <ctime>
-#include <iomanip>
 #include <algorithm>
+#include <cstring>
 
 using namespace std;
+using namespace std::chrono;
 
-struct Stats {
-    long long nvisit = 0;
-    long long nexplored = 0;
-    long long nleaf = 0;
-    long long nunfeasible = 0;
-    long long nnot_promising = 0;
-    long long npromising_but_discarded = 0;
-    long long nbest_solution_updated_from_leafs = 0;
-    long long nbest_solution_updated_from_pessimistic_bound = 0;
-};
+// Estructura que representa un nodo en el espacio de estados
+struct Nodo
+{
+    int fila, columna;
+    int g;         // Coste real acumulado (longitud del camino)
+    int h;         // Cota optimista (heurística)
+    int f;         // Coste total estimado (g + h)
+    string camino; // Secuencia de movimientos realizados
 
-// Global maze dimensions
-int n, m;
-
-// 8-way movement definitions
-const int dr[] = {-1, -1, 0, 1, 1, 1, 0, -1};
-const int dc[] = {0, 1, 1, 1, 0, -1, -1, -1};
-const int dir_code[] = {1, 2, 3, 4, 5, 6, 7, 8};
-
-// Node record in global repository to reconstruct path using parent pointers
-struct NodeRecord {
-    int r, c;
-    int parent_id;
-    int dir;
-};
-
-vector<NodeRecord> node_repo;
-
-struct Node {
-    int r, c;
-    int path_len;
-    int opt_bound;
-    int repo_idx;
-
-    bool operator<(const Node& other) const {
-        if (opt_bound != other.opt_bound) {
-            return opt_bound > other.opt_bound; // Smaller opt_bound has higher priority
-        }
-        if (path_len != other.path_len) {
-            return path_len < other.path_len; // Larger path_len has higher priority
-        }
-        int dist = max(abs(n - 1 - r), abs(m - 1 - c));
-        int other_dist = max(abs(n - 1 - other.r), abs(m - 1 - other.c));
-        return dist > other_dist; // Smaller distance has higher priority
+    // Priorizamos los nodos con menor 'f'. A igualdad de 'f', priorizamos mayor 'g' (más profundos en el laberinto)
+    bool operator>(const Nodo &otro) const
+    {
+        if (f == otro.f)
+            return g < otro.g;
+        return f > otro.f;
     }
 };
 
-// Fast query-based visited structure for greedy searches
-vector<vector<int>> visited_id;
-int current_query_id = 0;
-
-void mark_visited(int r, int c) {
-    visited_id[r][c] = current_query_id;
+// Cota optimista
+int calcular_heuristica(int fila, int columna, int dest_fila, int dest_columna)
+{
+    return max(abs(fila - dest_fila), abs(columna - dest_columna));
 }
 
-bool is_visited(int r, int c) {
-    return visited_id[r][c] == current_query_id;
+void imprimir_uso()
+{
+    cerr << "Uso: maze_bb [-p] [--p2D] -f fichero_entrada\n";
+    exit(1);
 }
 
-int chebyshev(int r, int c) {
-    return max(abs(n - 1 - r), abs(m - 1 - c));
-}
+// Variables globales para las estadísticas requeridas
+long long nodos_visitados = 0;
+long long nodos_explorados = 0;
+long long nodos_hoja = 0;
+long long nodos_no_factibles = 0;
+long long nodos_no_prometedores = 0;
+long long prometedores_descartados = 0;
+long long sol_actualizada_hoja = 0;
+long long sol_actualizada_pesimista = 0;
 
-// Reconstruct path from repository up to a certain node record
-vector<int> reconstruct_path(int repo_idx) {
-    vector<int> path;
-    int idx = repo_idx;
-    while (idx != -1) {
-        if (node_repo[idx].dir != 0) {
-            path.push_back(node_repo[idx].dir);
-        }
-        idx = node_repo[idx].parent_id;
-    }
-    reverse(path.begin(), path.end());
-    return path;
-}
+// Función principal de ramificación y poda requerida por el enunciado
+void maze_bb(const vector<vector<int>> &laberinto, int n, int m, int &mejor_coste, string &mejor_camino_str)
+{
+    // Matriz de dominancia: guarda el menor coste 'g' encontrado para llegar a cada celda
+    vector<vector<int>> min_coste_real(n, vector<int>(m, 1e9));
 
-// Reconstruct path combining repository, a transition, and greedy moves
-vector<int> reconstruct_pessimistic_path(int repo_idx, int last_dir, const vector<int>& greedy_moves) {
-    vector<int> path = reconstruct_path(repo_idx);
-    if (last_dir != 0) {
-        path.push_back(last_dir);
-    }
-    path.insert(path.end(), greedy_moves.begin(), greedy_moves.end());
-    return path;
-}
+    if (laberinto[0][0] == 1)
+    {
+        priority_queue<Nodo, vector<Nodo>, greater<Nodo>> cola_prioridad;
+        int h_inicial = calcular_heuristica(0, 0, n - 1, m - 1);
+        cola_prioridad.push({0, 0, 1, h_inicial, 1 + h_inicial, ""});
+        min_coste_real[0][0] = 1;
+        nodos_explorados++;
 
-// Greedy pathfinder for pessimistic bound
-int get_pessimistic_bound(int r, int c, int path_len, int repo_idx, const vector<vector<int>>& grid, vector<int>& greedy_moves) {
-    current_query_id++;
-    
-    // Mark parent path
-    int idx = repo_idx;
-    while (idx != -1) {
-        mark_visited(node_repo[idx].r, node_repo[idx].c);
-        idx = node_repo[idx].parent_id;
-    }
-    // Mark current node
-    mark_visited(r, c);
+        // Vectores de desplazamiento: Norte, NE, Este, SE, Sur, SO, Oeste, NO
+        int d_fila[] = {-1, -1, 0, 1, 1, 1, 0, -1};
+        int d_col[] = {0, 1, 1, 1, 0, -1, -1, -1};
+        char char_direccion[] = {'1', '2', '3', '4', '5', '6', '7', '8'};
 
-    int curr_r = r, curr_c = c;
-    int steps = 0;
-    greedy_moves.clear();
+        while (!cola_prioridad.empty())
+        {
+            Nodo actual = cola_prioridad.top();
+            cola_prioridad.pop();
 
-    while (curr_r != n - 1 || curr_c != m - 1) {
-        int best_dist = 1e9;
-        int best_nr = -1, best_nc = -1;
-        int best_dir = -1;
-
-        for (int i = 0; i < 8; i++) {
-            int nr = curr_r + dr[i];
-            int nc = curr_c + dc[i];
-            if (nr >= 0 && nr < n && nc >= 0 && nc < m && grid[nr][nc] == 1 && !is_visited(nr, nc)) {
-                int dist = chebyshev(nr, nc);
-                if (dist < best_dist) {
-                    best_dist = dist;
-                    best_nr = nr;
-                    best_nc = nc;
-                    best_dir = dir_code[i];
-                }
-            }
-        }
-
-        if (best_nr == -1) {
-            return n * m + 1; // Unreachable greedily
-        }
-
-        curr_r = best_nr;
-        curr_c = best_nc;
-        mark_visited(curr_r, curr_c);
-        greedy_moves.push_back(best_dir);
-        steps++;
-    }
-
-    return path_len + steps;
-}
-
-void mostrar_error_sintaxis(string msg) {
-    cerr << msg << endl;
-    cerr << "maze_bb [-p] [--p2D] -f fichero_entrada" << endl;
-}
-
-int main(int argc, char *argv[]) {
-    bool p_flag = false, p2d_flag = false;
-    string filename = "";
-
-    // 1. Command-line options validation
-    for (int i = 1; i < argc; i++) {
-        string arg = argv[i];
-        if (arg == "-f") {
-            if (i + 1 < argc) filename = argv[++i];
-            else {
-                mostrar_error_sintaxis("Error: falta el nombre del fichero tras -f");
-                return 1;
-            }
-        } else if (arg == "-p") p_flag = true;
-        else if (arg == "--p2D") p2d_flag = true;
-        else {
-            mostrar_error_sintaxis("Error: opcion inexistente " + arg);
-            return 1;
-        }
-    }
-
-    if (filename == "") {
-        mostrar_error_sintaxis("Error: la opcion -f es obligatoria");
-        return 1;
-    }
-
-    clock_t start = clock();
-
-    // 2. Open and read the maze file
-    ifstream file(filename);
-    if (!file.is_open()) {
-        cerr << "Error: no se pudo abrir el archivo " << filename << endl;
-        return 1;
-    }
-
-    if (!(file >> n >> m)) {
-        cerr << "Error al leer dimensiones del laberinto" << endl;
-        return 1;
-    }
-
-    vector<vector<int>> grid(n, vector<int>(m));
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < m; j++) {
-            if (!(file >> grid[i][j])) {
-                cerr << "Error al leer matriz del laberinto" << endl;
-                return 1;
-            }
-        }
-    }
-    file.close();
-
-    // Initialize visited tracking for greedy search
-    visited_id.assign(n, vector<int>(m, 0));
-    current_query_id = 0;
-
-    Stats s;
-    int inf = n * m + 1;
-    int best_len = inf;
-    vector<int> best_path;
-
-    // Dominance matrix: minimum path length to reach each cell
-    vector<vector<int>> min_dist(n, vector<int>(m, inf));
-
-    // Special case: 1x1 maze
-    if (n == 1 && m == 1) {
-        s.nvisit = 1;
-        if (grid[0][0] == 1) {
-            s.nexplored = 1;
-            s.nleaf = 1;
-            s.nbest_solution_updated_from_leafs = 1;
-            best_len = 1;
-        }
-    } 
-    // Normal case with open start/end
-    else if (grid[0][0] == 1 && grid[n - 1][m - 1] == 1) {
-        priority_queue<Node> LNV;
-        node_repo.clear();
-
-        s.nvisit++; // Root is considered
-
-        // Root is feasible and promising
-        int root_opt = 1 + chebyshev(0, 0);
-
-        s.nexplored++; // Root is inserted into LNV
-        
-        NodeRecord rec;
-        rec.r = 0;
-        rec.c = 0;
-        rec.parent_id = -1;
-        rec.dir = 0;
-        node_repo.push_back(rec);
-
-        Node root_node;
-        root_node.r = 0;
-        root_node.c = 0;
-        root_node.path_len = 1;
-        root_node.opt_bound = root_opt;
-        root_node.repo_idx = 0;
-
-        LNV.push(root_node);
-        min_dist[0][0] = 1;
-
-        long long n_popped = 0;
-
-        while (!LNV.empty()) {
-            Node curr = LNV.top();
-            LNV.pop();
-            n_popped++;
-
-            // Check if no longer promising
-            if (curr.opt_bound >= best_len) {
-                s.npromising_but_discarded++;
+            // Poda: Si tras sacarlo de la cola ya no es prometedor o hemos llegado por un camino mejor
+            if (actual.f >= mejor_coste || actual.g > min_coste_real[actual.fila][actual.columna])
+            {
+                prometedores_descartados++;
                 continue;
             }
 
-            // Check dominance
-            if (curr.path_len > min_dist[curr.r][curr.c]) {
-                s.npromising_but_discarded++;
-                continue;
-            }
-
-            // Check if leaf
-            if (curr.r == n - 1 && curr.c == m - 1) {
-                s.nleaf++;
-                if (curr.path_len < best_len) {
-                    best_len = curr.path_len;
-                    best_path = reconstruct_path(curr.repo_idx);
-                    s.nbest_solution_updated_from_leafs++;
+            // ¿Es nodo hoja (hemos llegado a la salida)?
+            if (actual.fila == n - 1 && actual.columna == m - 1)
+            {
+                nodos_hoja++;
+                if (actual.g < mejor_coste)
+                {
+                    mejor_coste = actual.g; // Actualizacion de la cota pesimista global
+                    mejor_camino_str = actual.camino;
+                    sol_actualizada_hoja++;
                 }
                 continue;
             }
 
-            // Calculate pessimistic bound when exploring (periodically or early in the search to control CPU time)
-            if (n_popped < 10 || n_popped % 500 == 0 || curr.path_len % 256 == 0) {
-                vector<int> greedy_moves;
-                int curr_pess = get_pessimistic_bound(curr.r, curr.c, curr.path_len, curr.repo_idx, grid, greedy_moves);
-                if (curr_pess < best_len) {
-                    best_len = curr_pess;
-                    best_path = reconstruct_pessimistic_path(curr.repo_idx, 0, greedy_moves);
-                    s.nbest_solution_updated_from_pessimistic_bound++;
-                }
-            }
+            // Expandir los 8 vecinos posibles [cite: 33]
+            for (int i = 0; i < 8; ++i)
+            {
+                int nueva_fila = actual.fila + d_fila[i];
+                int nueva_col = actual.columna + d_col[i];
+                nodos_visitados++;
 
-            // Generate neighbors
-            for (int i = 0; i < 8; i++) {
-                int nr = curr.r + dr[i];
-                int nc = curr.c + dc[i];
-
-                s.nvisit++; // Neighbor is considered
-
-                // Feasibility check
-                if (nr < 0 || nr >= n || nc < 0 || nc >= m || grid[nr][nc] == 0) {
-                    s.nunfeasible++;
+                // Poda por factibilidad (fuera de límites o es una pared/inaccesible) [cite: 9]
+                if (nueva_fila < 0 || nueva_fila >= n || nueva_col < 0 || nueva_col >= m || laberinto[nueva_fila][nueva_col] == 0)
+                {
+                    nodos_no_factibles++;
                     continue;
                 }
 
-                // Promising check (optimistic bound & dominance)
-                int child_opt = curr.path_len + 1 + chebyshev(nr, nc);
-                if (child_opt >= best_len || curr.path_len + 1 >= min_dist[nr][nc]) {
-                    s.nnot_promising++;
+                int siguiente_g = actual.g + 1;
+                // Poda por dominancia (ya llegamos a esta celda antes con igual o mejor coste)
+                if (siguiente_g >= min_coste_real[nueva_fila][nueva_col])
+                {
+                    nodos_no_factibles++;
                     continue;
                 }
 
-                // Valid and promising: update dominance
-                min_dist[nr][nc] = curr.path_len + 1;
+                int siguiente_h = calcular_heuristica(nueva_fila, nueva_col, n - 1, m - 1);
+                int siguiente_f = siguiente_g + siguiente_h;
 
-                // Push neighbor to LNV
-                s.nexplored++;
-                NodeRecord rec;
-                rec.r = nr;
-                rec.c = nc;
-                rec.parent_id = curr.repo_idx;
-                rec.dir = dir_code[i];
-                int new_repo_idx = node_repo.size();
-                node_repo.push_back(rec);
-
-                Node child_node;
-                child_node.r = nr;
-                child_node.c = nc;
-                child_node.path_len = curr.path_len + 1;
-                child_node.opt_bound = child_opt;
-                child_node.repo_idx = new_repo_idx;
-
-                LNV.push(child_node);
-            }
-        }
-    } 
-    // Closed entrance or exits
-    else {
-        s.nvisit++;
-        // If grid[0][0] == 0, we only visit it and stop.
-        // If grid[0][0] == 1 but grid[n-1][m-1] == 0, then root is feasible, but we will fail.
-        // The above code only enters if both are 1. If not, it lands here.
-    }
-
-    clock_t end = clock();
-    double ms = (double)(end - start) * 1000.0 / CLOCKS_PER_SEC;
-
-    // Output results in the exact requested format
-    cout << (best_len == inf ? 0 : best_len) << "\n";
-    cout << s.nvisit << " " << s.nexplored << " " << s.nleaf << " " << s.nunfeasible << " "
-         << s.nnot_promising << " " << s.npromising_but_discarded << " "
-         << s.nbest_solution_updated_from_leafs << " "
-         << s.nbest_solution_updated_from_pessimistic_bound << "\n";
-    cout << fixed << setprecision(3) << ms << "\n";
-
-    if (p2d_flag) {
-        if (best_len == inf) {
-            cout << 0 << "\n";
-        } else {
-            vector<string> out(n, string(m, ' '));
-            for (int i = 0; i < n; i++) {
-                for (int j = 0; j < m; j++) {
-                    out[i][j] = grid[i][j] + '0';
+                // Poda por cota (nodo no prometedor, excede o iguala el mejor coste encontrado)
+                if (siguiente_f >= mejor_coste)
+                {
+                    nodos_no_prometedores++;
+                    continue;
                 }
+
+                // Si es factible y prometedor, actualizamos dominancia y lo metemos a la cola
+                min_coste_real[nueva_fila][nueva_col] = siguiente_g;
+                nodos_explorados++;
+                cola_prioridad.push({nueva_fila, nueva_col, siguiente_g, siguiente_h, siguiente_f, actual.camino + char_direccion[i]});
             }
-            int r = 0, c = 0;
-            out[r][c] = '*';
-            for (int d : best_path) {
-                r += dr[d - 1];
-                c += dc[d - 1];
-                out[r][c] = '*';
+        }
+    }
+}
+
+int main(int argc, char *argv[])
+{
+    string nombre_fichero = "";
+    bool opcion_p = false;
+    bool opcion_p2D = false;
+
+    // Procesar los argumentos pasados por consola [cite: 45]
+    for (int i = 1; i < argc; ++i)
+    {
+        string argumento = argv[i];
+        if (argumento == "-f")
+        {
+            if (i + 1 < argc)
+                nombre_fichero = argv[++i];
+            else
+                imprimir_uso();
+        }
+        else if (argumento == "-p")
+        {
+            opcion_p = true;
+        }
+        else if (argumento == "--p2D")
+        {
+            opcion_p2D = true;
+        }
+        else
+        {
+            imprimir_uso();
+        }
+    }
+
+    if (nombre_fichero.empty())
+        imprimir_uso();
+
+    // Lectura del fichero de entrada [cite: 96, 100, 101]
+    ifstream archivo(nombre_fichero);
+    if (!archivo)
+    {
+        cerr << "Error: No se pudo abrir el fichero " << nombre_fichero << "\n";
+        exit(1);
+    }
+
+    int n, m;
+    archivo >> n >> m;
+    vector<vector<int>> laberinto(n, vector<int>(m));
+    for (int i = 0; i < n; ++i)
+    {
+        for (int j = 0; j < m; ++j)
+        {
+            archivo >> laberinto[i][j];
+        }
+    }
+    archivo.close();
+
+    int mejor_coste = 1e9; // Cota pesimista global inicializada a "infinito"
+    string mejor_camino_str = "";
+
+    // Medir tiempo de ejecución [cite: 76]
+    auto tiempo_inicio = high_resolution_clock::now();
+
+    // Llamada a la función principal
+    maze_bb(laberinto, n, m, mejor_coste, mejor_camino_str);
+
+    auto tiempo_fin = high_resolution_clock::now();
+    double tiempo_cpu_ms = duration<double, std::milli>(tiempo_fin - tiempo_inicio).count();
+
+    bool solucion_encontrada = (mejor_coste != 1e9);
+
+    // Salida 1: Longitud del camino (o 0 si no hay salida) [cite: 61, 62]
+    cout << (solucion_encontrada ? mejor_coste : 0) << "\n";
+
+    // Salida 2: Los ocho valores estadísticos separados por espacios [cite: 63, 64]
+    cout << nodos_visitados << " " << nodos_explorados << " " << nodos_hoja << " "
+         << nodos_no_factibles << " " << nodos_no_prometedores << " "
+         << prometedores_descartados << " " << sol_actualizada_hoja << " "
+         << sol_actualizada_pesimista << "\n";
+
+    // Salida 3: Tiempo en milisegundos [cite: 76]
+    cout << tiempo_cpu_ms << "\n";
+
+    // Salida de la opción --p2D: Laberinto con el camino marcado con asteriscos [cite: 79]
+    if (opcion_p2D)
+    {
+        if (!solucion_encontrada)
+        {
+            cout << "0\n"; // [cite: 82]
+        }
+        else
+        {
+            vector<vector<char>> laberinto_salida(n, vector<char>(m));
+            for (int i = 0; i < n; ++i)
+                for (int j = 0; j < m; ++j)
+                    laberinto_salida[i][j] = laberinto[i][j] ? '1' : '0';
+
+            int fila_actual = 0, col_actual = 0;
+            laberinto_salida[fila_actual][col_actual] = '*'; // Casilla de inicio [cite: 79]
+
+            for (char movimiento : mejor_camino_str)
+            {
+                if (movimiento == '1')
+                {
+                    fila_actual--;
+                }
+                else if (movimiento == '2')
+                {
+                    fila_actual--;
+                    col_actual++;
+                }
+                else if (movimiento == '3')
+                {
+                    col_actual++;
+                }
+                else if (movimiento == '4')
+                {
+                    fila_actual++;
+                    col_actual++;
+                }
+                else if (movimiento == '5')
+                {
+                    fila_actual++;
+                }
+                else if (movimiento == '6')
+                {
+                    fila_actual++;
+                    col_actual--;
+                }
+                else if (movimiento == '7')
+                {
+                    col_actual--;
+                }
+                else if (movimiento == '8')
+                {
+                    fila_actual--;
+                    col_actual--;
+                }
+                laberinto_salida[fila_actual][col_actual] = '*';
             }
-            for (int i = 0; i < n; i++) {
-                cout << out[i] << "\n";
+
+            for (int i = 0; i < n; ++i)
+            {
+                for (int j = 0; j < m; ++j)
+                {
+                    cout << laberinto_salida[i][j]; // Sin espacios de separación [cite: 80]
+                }
+                cout << "\n";
             }
         }
     }
 
-    if (p_flag) {
-        if (best_len == inf) {
-            cout << "<0>\n";
-        } else {
-            cout << "<";
-            for (int d : best_path) {
-                cout << d;
-            }
-            cout << ">\n";
+    // Salida de la opción -p: Secuencia numérica continua entre menor y mayor [cite: 83, 85]
+    if (opcion_p)
+    {
+        if (!solucion_encontrada)
+        {
+            cout << "<0>\n"; // [cite: 89]
+        }
+        else
+        {
+            cout << "<" << mejor_camino_str << ">\n";
         }
     }
 
